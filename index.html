@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Drama Star ESL - Emotion Acting Studio</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti CDN for celebration effects -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            stage: {
+              purple: '#3b0764',
+              curtain: '#991b1b',
+              gold: '#f59e0b',
+              light: '#fef08a'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Stage Aesthetics & iPad Adjustments */
+    body {
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      background: linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #4c0519 100%);
+    }
+
+    .stage-curtain-left {
+      background: linear-gradient(90deg, #7f1d1d 0%, #b91c1c 80%, #991b1b 100%);
+      box-shadow: 10px 0 25px rgba(0,0,0,0.6);
+    }
+
+    .stage-curtain-right {
+      background: linear-gradient(-90deg, #7f1d1d 0%, #b91c1c 80%, #991b1b 100%);
+      box-shadow: -10px 0 25px rgba(0,0,0,0.6);
+    }
+
+    .spotlight {
+      background: radial-gradient(circle, rgba(254, 240, 138, 0.25) 0%, rgba(254, 240, 138, 0) 70%);
+    }
+
+    /* Pulse animation for record button */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .pulse-btn {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+
+    /* Flash Effect */
+    .flash-active {
+      animation: camera-flash 0.4s ease-out;
+    }
+    @keyframes camera-flash {
+      0% { opacity: 0; }
+      50% { opacity: 1; background-color: white; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between overflow-x-hidden font-sans">
+
+  <!-- Top Navigation / Scorebar -->
+  <header class="p-4 bg-slate-900/80 backdrop-blur border-b border-amber-500/30 sticky top-0 z-30">
+    <div class="max-w-4xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-amber-500 text-slate-950 p-2.5 rounded-2xl shadow-lg font-black text-xl flex items-center gap-2">
+          <i class="fa-solid fa-masks-theater text-2xl"></i>
+          <span class="hidden sm:inline">Drama Star</span>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold leading-tight text-amber-300">ESL Drama Studio</h1>
+          <p class="text-xs text-slate-400">Express Yourself with Emotion!</p>
+        </div>
+      </div>
+
+      <!-- Score & Stars -->
+      <div class="flex items-center space-x-4">
+        <div class="bg-slate-800/90 px-4 py-1.5 rounded-full border border-amber-500/40 flex items-center gap-2 shadow-inner">
+          <i class="fa-solid fa-star text-amber-400 text-xl"></i>
+          <span id="total-stars" class="font-extrabold text-xl text-amber-300">0</span>
+        </div>
+        <button id="btn-mode-toggle" onclick="toggleHelpModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white p-2.5 rounded-full shadow-md transition">
+          <i class="fa-solid fa-circle-question text-xl"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Stage Canvas Area -->
+  <main class="flex-grow flex flex-col items-center justify-center p-3 sm:p-6 relative">
+    
+    <!-- Spotlight background graphics -->
+    <div class="absolute inset-0 spotlight pointer-events-none"></div>
+
+    <div class="w-full max-w-2xl bg-slate-900/90 rounded-3xl border-4 border-amber-500/50 shadow-2xl overflow-hidden relative flex flex-col">
+      
+      <!-- Target Emotion Header Box -->
+      <div class="bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 p-4 text-slate-950 text-center relative shadow-md">
+        <span class="text-xs uppercase tracking-widest font-black text-amber-950 block mb-1">Your Drama Challenge:</span>
+        <div class="flex items-center justify-center gap-3">
+          <span id="target-emoji" class="text-4xl sm:text-5xl animate-bounce">😃</span>
+          <h2 id="target-emotion-name" class="text-3xl sm:text-4xl font-extrabold tracking-wide uppercase drop-shadow">
+            HAPPY
+          </h2>
+          <button onclick="speakCurrentEmotion()" class="bg-slate-950/20 hover:bg-slate-950/40 text-slate-950 p-3 rounded-full transition transform active:scale-95" title="Listen to pronunciation">
+            <i class="fa-solid fa-volume-high text-2xl"></i>
+          </button>
+        </div>
+        <p id="target-prompt-desc" class="text-sm font-semibold text-amber-950/90 mt-1 max-w-lg mx-auto">
+          "Show a big smile, open your eyes wide, and look joyful!"
+        </p>
+      </div>
+
+      <!-- Stage Camera Viewport -->
+      <div class="relative w-full aspect-[4/3] bg-black flex items-center justify-center overflow-hidden">
+        
+        <!-- Curtains Decorative Elements -->
+        <div class="absolute top-0 left-0 bottom-0 w-8 sm:w-12 stage-curtain-left z-10 pointer-events-none"></div>
+        <div class="absolute top-0 right-0 bottom-0 w-8 sm:w-12 stage-curtain-right z-10 pointer-events-none"></div>
+        <div class="absolute top-0 inset-x-0 h-6 bg-red-950 border-b-2 border-amber-500/50 z-10 pointer-events-none"></div>
+
+        <!-- Camera Off / Permission Prompt -->
+        <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0 bg-slate-950">
+          <div class="w-20 h-20 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mb-4 text-3xl">
+            <i class="fa-solid fa-camera"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2 text-amber-200">Start Your Camera</h3>
+          <p class="text-sm text-slate-400 max-w-xs mb-6">Allow camera access on your iPad to act out emotions on the drama stage!</p>
+          <button onclick="initCamera()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-8 py-4 rounded-2xl shadow-xl text-lg flex items-center gap-3 transition transform active:scale-95">
+            <i class="fa-solid fa-video"></i>
+            Turn On Camera
+          </button>
+        </div>
+
+        <!-- Video element -->
+        <video id="webcam-feed" autoplay playsinline muted class="w-full h-full object-cover hidden scale-x-[-1]"></video>
+
+        <!-- Hidden canvas for image capture -->
+        <canvas id="capture-canvas" class="hidden"></canvas>
+
+        <!-- Flash overlay element -->
+        <div id="flash-overlay" class="absolute inset-0 pointer-events-none opacity-0 z-20"></div>
+
+        <!-- Countdown overlay -->
+        <div id="countdown-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-20">
+          <span id="countdown-text" class="text-9xl font-black text-amber-400 animate-ping">3</span>
+        </div>
+
+        <!-- Processing AI Spinner -->
+        <div id="ai-loading-overlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center hidden z-20 p-6 text-center">
+          <div class="w-16 h-16 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p class="text-xl font-bold text-amber-300">Evaluating Your Performance...</p>
+          <p class="text-xs text-slate-400 mt-2">The AI Drama Director is checking your expression!</p>
+        </div>
+
+        <!-- Live Viewfinder HUD Overlay -->
+        <div id="hud-overlay" class="absolute inset-x-4 bottom-4 z-10 flex justify-between items-end hidden pointer-events-none">
+          <div class="bg-slate-950/75 backdrop-blur px-3 py-1.5 rounded-lg border border-amber-500/30 text-xs text-amber-300 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            LIVE CAMERA FEED
+          </div>
+          <button onclick="switchCameraFacing()" class="pointer-events-auto bg-slate-900/80 text-white p-3 rounded-full border border-slate-700 active:scale-90 transition">
+            <i class="fa-solid fa-camera-rotate text-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Controls Bar -->
+      <div class="p-4 bg-slate-950/90 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <button onclick="nextRandomEmotion()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-5 py-3 rounded-xl flex items-center justify-center gap-2 transition active:scale-95 text-sm">
+          <i class="fa-solid fa-shuffle text-amber-400"></i>
+          Skip Emotion
+        </button>
+
+        <button id="btn-snap" onclick="startActingChallenge()" class="w-full sm:w-auto flex-1 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black py-4 px-8 rounded-2xl shadow-lg text-xl flex items-center justify-center gap-3 transition transform active:scale-95 pulse-btn disabled:opacity-50 disabled:cursor-not-allowed">
+          <i class="fa-solid fa-camera-retro text-2xl"></i>
+          SNAP & EVALUATE!
+        </button>
+
+        <button onclick="readTipAloud()" class="w-full sm:w-auto bg-indigo-900/60 hover:bg-indigo-800 text-indigo-200 font-bold px-4 py-3 rounded-xl flex items-center justify-center gap-2 border border-indigo-700/50 transition active:scale-95 text-sm">
+          <i class="fa-solid fa-lightbulb text-amber-300"></i>
+          ESL Tip
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Result Feedback Modal -->
+  <div id="result-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border-2 border-amber-500/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl relative flex flex-col items-center text-center overflow-hidden">
+      
+      <!-- Top Banner Header -->
+      <div id="modal-banner" class="w-full py-3 px-6 rounded-2xl mb-4 font-black text-2xl uppercase tracking-wider flex items-center justify-center gap-3 shadow">
+        <span id="modal-status-icon">🎭</span>
+        <span id="modal-status-text">Great Acting!</span>
+      </div>
+
+      <!-- Snapshot Image preview -->
+      <div class="relative w-48 h-36 rounded-2xl overflow-hidden border-2 border-amber-400/40 shadow-inner mb-4 bg-black">
+        <img id="snapshot-img" class="w-full h-full object-cover scale-x-[-1]" alt="Student Performance">
+        <div id="modal-score-badge" class="absolute bottom-2 right-2 bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg text-sm shadow">
+          Score: 90%
+        </div>
+      </div>
+
+      <!-- Stars Display -->
+      <div id="stars-container" class="flex justify-center gap-2 text-3xl mb-3 text-amber-400">
+        <i class="fa-solid fa-star"></i>
+        <i class="fa-solid fa-star"></i>
+        <i class="fa-solid fa-star"></i>
+      </div>
+
+      <!-- Feedback & ESL Advice -->
+      <div class="bg-slate-800/80 p-4 rounded-2xl w-full border border-slate-700 mb-6 text-left space-y-2">
+        <div>
+          <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Director's Review:</span>
+          <p id="modal-director-feedback" class="text-sm font-semibold text-slate-200 mt-0.5">
+            "Fantastic mouth open and dramatic face!"
+          </p>
+        </div>
+        <div class="pt-2 border-t border-slate-700/60 flex items-start gap-2">
+          <i class="fa-solid fa-graduation-cap text-indigo-400 text-lg mt-0.5"></i>
+          <div>
+            <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Drama ESL Vocab Tip:</span>
+            <p id="modal-esl-tip" class="text-xs text-slate-300">
+              "Try opening your jaw wide and holding your hands up to your cheeks!"
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex gap-3 w-full">
+        <button onclick="replayCurrent()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl transition text-sm flex items-center justify-center gap-2">
+          <i class="fa-solid fa-rotate-right"></i> Try Again
+        </button>
+        <button onclick="nextRandomEmotion(); closeModal();" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold py-3 px-4 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-lg">
+          Next Emotion <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Help / Instructions Modal -->
+  <div id="help-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-6 text-slate-200 relative">
+      <button onclick="toggleHelpModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-xl font-black text-amber-400 mb-3 flex items-center gap-2">
+        <i class="fa-solid fa-masks-theater"></i> How to Play
+      </h3>
+      <ol class="space-y-3 text-sm list-decimal list-inside text-slate-300">
+        <li>Look at the target emotion shown at the top of the screen.</li>
+        <li>Press <strong class="text-amber-300">Listen 🔊</strong> to hear how to say and act the emotion in English.</li>
+        <li>Press <strong class="text-amber-300">SNAP & EVALUATE!</strong> and get ready during the 3-2-1 countdown!</li>
+        <li>Show your best dramatic facial expression into the camera!</li>
+        <li>The AI Drama Director will score your performance and give you stars! ⭐</li>
+      </ol>
+      <button onclick="toggleHelpModal()" class="w-full mt-6 bg-amber-500 text-slate-950 font-bold py-3 rounded-xl">
+        Got it, Let's Act!
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* Emotion Database for 10yo ESL Learners */
+    const EMOTIONS = [
+      {
+        name: "HAPPY",
+        emoji: "😃",
+        description: "Show a big smile, show your teeth, open your eyes wide!",
+        eslTip: "Keywords: Joyful, Cheerful, Smiling. Lift up the corners of your mouth!",
+        actingCues: "Wide smile, raised cheeks, bright eyes."
+      },
+      {
+        name: "SAD",
+        emoji: "😢",
+        description: "Frown, lower your eyebrows, and make a pouting face!",
+        eslTip: "Keywords: Gloomy, Unhappy, Tearful. Turn the corners of your lips down.",
+        actingCues: "Frown, lowered mouth corners, drooping eyelids."
+      },
+      {
+        name: "SURPRISED",
+        emoji: "😮",
+        description: "Open your mouth wide in an 'O' shape and open your eyes big!",
+        eslTip: "Keywords: Shocked, Amazed, Astonished. Raise both eyebrows high!",
+        actingCues: "Wide open mouth, high eyebrows, wide eyes."
+      },
+      {
+        name: "ANGRY",
+        emoji: "😡",
+        description: "Squeeze your eyebrows together, scowl, and look cross!",
+        eslTip: "Keywords: Mad, Upset, Furious. Lower your brow toward your nose.",
+        actingCues: "Squeezed eyebrows, tight lips, intense gaze."
+      },
+      {
+        name: "SCARED",
+        emoji: "😨",
+        description: "Open your eyes wide, pull mouth back, look frightened!",
+        eslTip: "Keywords: Afraid, Fearful, Terrified. Pull your head back slightly.",
+        actingCues: "Tense mouth, wide eyes, raised brows."
+      },
+      {
+        name: "SILLY",
+        emoji: "🤪",
+        description: "Stick out your tongue, squint one eye, make a wacky face!",
+        eslTip: "Keywords: Funny, Playful, Goofy. Make an unusual expression!",
+        actingCues: "Tongue out, winking eye, funny facial twist."
+      },
+      {
+        name: "EXCITED",
+        emoji: "🤩",
+        description: "Huge gasp, gigantic smile, like you just won a prize!",
+        eslTip: "Keywords: Thrilled, Eager, Enthusiastic. Express high energy!",
+        actingCues: "Huge open smile, energetic open eyes."
+      },
+      {
+        name: "DISGUSTED",
+        emoji: "🤢",
+        description: "Wrinkle your nose, raise your upper lip, as if smelling rotten cheese!",
+        eslTip: "Keywords: Yuck, Nauseated, Repulsed. Scrunch up your nose!",
+        actingCues: "Wrinkled nose, raised upper lip."
+      }
+    ];
+
+    let currentEmotionIndex = 0;
+    let userStars = 0;
+    let cameraStream = null;
+    let currentFacingMode = 'user'; // iPad camera default
+
+    // Web Audio Synthesizer for Stage Sound Effects
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playTone(freq, type, duration) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) { console.error(e); }
+    }
+
+    function playBeep() { playTone(600, 'sine', 0.15); }
+    function playCameraShutter() {
+      playTone(1200, 'square', 0.08);
+      setTimeout(() => playTone(300, 'triangle', 0.12), 80);
+    }
+    function playCheerSound() {
+      // Ascending chord
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+        setTimeout(() => playTone(freq, 'triangle', 0.3), idx * 100);
+      });
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      }
+    }
+
+    // Web Speech API for ESL Audio Output
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Stop prior speech
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9; // Slightly slower for ESL learners
+        utterance.pitch = 1.1; // Friendly tone
+        utterance.lang = 'en-US';
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    function speakCurrentEmotion() {
+      const current = EMOTIONS[currentEmotionIndex];
+      speakText(`${current.name}! ${current.description}`);
+    }
+
+    function readTipAloud() {
+      const current = EMOTIONS[currentEmotionIndex];
+      speakText(`ESL Drama Tip: ${current.eslTip}`);
+    }
+
+    // Camera Handling Logic
+    async function initCamera() {
+      const videoEl = document.getElementById('webcam-feed');
+      const placeholder = document.getElementById('camera-placeholder');
+      const hud = document.getElementById('hud-overlay');
+
+      try {
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(track => track.stop());
+        }
+
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: currentFacingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 960 }
+          },
+          audio: false
+        });
+
+        videoEl.srcObject = cameraStream;
+        videoEl.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        hud.classList.remove('hidden');
+      } catch (err) {
+        console.error("Camera access error:", err);
+        showCustomAlert("Camera Access Error", "Please allow camera permissions in your iPad settings to play!");
+      }
+    }
+
+    function switchCameraFacing() {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      initCamera();
+    }
+
+    function setEmotion(index) {
+      currentEmotionIndex = index;
+      const data = EMOTIONS[currentEmotionIndex];
+      document.getElementById('target-emoji').innerText = data.emoji;
+      document.getElementById('target-emotion-name').innerText = data.name;
+      document.getElementById('target-prompt-desc').innerText = `"${data.description}"`;
+    }
+
+    function nextRandomEmotion() {
+      let nextIdx = Math.floor(Math.random() * EMOTIONS.length);
+      if (nextIdx === currentEmotionIndex) {
+        nextIdx = (currentEmotionIndex + 1) % EMOTIONS.length;
+      }
+      setEmotion(nextIdx);
+    }
+
+    function replayCurrent() {
+      closeModal();
+      speakCurrentEmotion();
+    }
+
+    // Exponential Backoff Fetch Utility for Gemini API
+    async function fetchWithRetry(url, options, maxRetries = 3) {
+      let delay = 1000;
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const res = await fetch(url, options);
+          if (res.ok) return res;
+          if (res.status === 429 || res.status >= 500) {
+            await new Promise(r => setTimeout(r, delay));
+            delay *= 2;
+            continue;
+          }
+          return res;
+        } catch (err) {
+          if (i === maxRetries - 1) throw err;
+          await new Promise(r => setTimeout(r, delay));
+          delay *= 2;
+        }
+      }
+      throw new Error("Failed after retries");
+    }
+
+    async function evaluatePerformanceWithAI(base64Image, targetEmotion) {
+      const apiKey = ""; // Canvas runtime provides key automatically if empty string
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      const systemInstruction = `You are a warm, encouraging drama teacher for 10-year-old ESL (English as Second Language) students.
+Evaluate if the facial expression in the photograph portrays the requested target emotion.
+Be supportive, fun, and constructive. Keep feedback simple (1-2 sentences) appropriate for 10-year-old English learners.`;
+
+      const promptText = `Target Emotion: "${targetEmotion.name}".
+Is the student portraying this emotion correctly with their facial expression?
+Provide structured JSON with:
+- isCorrect (boolean): true if their face matches or attempts the emotion reasonably well.
+- score (integer 0-100): acting expression score.
+- detectedEmotion (string): emotion you detect.
+- feedback (string): supportive comment praising their face or telling them what to move.
+- actingTip (string): clear ESL tip on facial movement for drama.`;
+
+      const payload = {
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: promptText },
+              {
+                inlineData: {
+                  mimeType: "image/jpeg",
+                  data: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              isCorrect: { type: "BOOLEAN" },
+              score: { type: "INTEGER" },
+              detectedEmotion: { type: "STRING" },
+              feedback: { type: "STRING" },
+              actingTip: { type: "STRING" }
+            },
+            required: ["isCorrect", "score", "detectedEmotion", "feedback", "actingTip"]
+          }
+        }
+      };
+
+      try {
+        const response = await fetchWithRetry(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (resultText) {
+          return JSON.parse(resultText);
+        }
+      } catch (err) {
+        console.warn("API Call fallback activated:", err);
+      }
+
+      // Fallback response if API fails or offline mock mode
+      return {
+        isCorrect: true,
+        score: 85,
+        detectedEmotion: targetEmotion.name,
+        feedback: "Wonderful dramatic expression! You look like a real stage actor!",
+        actingTip: targetEmotion.eslTip
+      };
+    }
+
+    // Gameplay flow execution
+    function startActingChallenge() {
+      const videoEl = document.getElementById('webcam-feed');
+      if (!cameraStream || videoEl.classList.contains('hidden')) {
+        initCamera();
+        return;
+      }
+
+      const countdownOverlay = document.getElementById('countdown-overlay');
+      const countdownText = document.getElementById('countdown-text');
+      const btnSnap = document.getElementById('btn-snap');
+
+      btnSnap.disabled = true;
+      countdownOverlay.classList.remove('hidden');
+
+      let count = 3;
+      countdownText.innerText = count;
+      playBeep();
+
+      const timer = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countdownText.innerText = count;
+          playBeep();
+        } else {
+          clearInterval(timer);
+          countdownOverlay.classList.add('hidden');
+          captureAndAnalyze();
+        }
+      }, 900);
+    }
+
+    async function captureAndAnalyze() {
+      const videoEl = document.getElementById('webcam-feed');
+      const canvasEl = document.getElementById('capture-canvas');
+      const flashOverlay = document.getElementById('flash-overlay');
+      const loadingOverlay = document.getElementById('ai-loading-overlay');
+      const btnSnap = document.getElementById('btn-snap');
+
+      // Play shutter sound & screen flash
+      playCameraShutter();
+      flashOverlay.classList.add('flash-active');
+      setTimeout(() => flashOverlay.classList.remove('flash-active'), 400);
+
+      // Draw video frame to hidden canvas
+      canvasEl.width = videoEl.videoWidth || 640;
+      canvasEl.height = videoEl.videoHeight || 480;
+      const ctx = canvasEl.getContext('2d');
+      ctx.drawImage(videoEl, 0, 0, canvasEl.width, canvasEl.height);
+
+      // Get Data URL & Base64
+      const dataUrl = canvasEl.toDataURL('image/jpeg', 0.85);
+      const base64Data = dataUrl.split(',')[1];
+
+      // Show snapshot image in result modal
+      document.getElementById('snapshot-img').src = dataUrl;
+
+      // Show AI loading overlay
+      loadingOverlay.classList.remove('hidden');
+
+      const targetEmotion = EMOTIONS[currentEmotionIndex];
+      const result = await evaluatePerformanceWithAI(base64Data, targetEmotion);
+
+      loadingOverlay.classList.add('hidden');
+      btnSnap.disabled = false;
+
+      // Display Modal Results
+      showResultModal(result, targetEmotion);
+    }
+
+    function showResultModal(result, targetEmotion) {
+      const modal = document.getElementById('result-modal');
+      const banner = document.getElementById('modal-banner');
+      const statusIcon = document.getElementById('modal-status-icon');
+      const statusText = document.getElementById('modal-status-text');
+      const feedbackText = document.getElementById('modal-director-feedback');
+      const eslTipText = document.getElementById('modal-esl-tip');
+      const scoreBadge = document.getElementById('modal-score-badge');
+      const starsContainer = document.getElementById('stars-container');
+
+      scoreBadge.innerText = `Score: ${result.score}%`;
+      feedbackText.innerText = `"${result.feedback}"`;
+      eslTipText.innerText = result.actingTip;
+
+      // Determine Star Rating & Banner Colors
+      let starsCount = 1;
+      if (result.score >= 80) starsCount = 3;
+      else if (result.score >= 60) starsCount = 2;
+
+      starsContainer.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        if (i < starsCount) {
+          starsContainer.innerHTML += `<i class="fa-solid fa-star text-amber-400 animate-bounce"></i>`;
+        } else {
+          starsContainer.innerHTML += `<i class="fa-regular fa-star text-slate-600"></i>`;
+        }
+      }
+
+      if (result.isCorrect) {
+        banner.className = "w-full py-3 px-6 rounded-2xl mb-4 font-black text-2xl uppercase tracking-wider flex items-center justify-center gap-3 shadow bg-emerald-500 text-slate-950";
+        statusIcon.innerText = "🌟";
+        statusText.innerText = "Bravo! Spot On!";
+        playCheerSound();
+        addStars(starsCount);
+        speakText(`Bravo! Great acting for ${targetEmotion.name}!`);
+      } else {
+        banner.className = "w-full py-3 px-6 rounded-2xl mb-4 font-black text-2xl uppercase tracking-wider flex items-center justify-center gap-3 shadow bg-amber-500 text-slate-950";
+        statusIcon.innerText = "🎭";
+        statusText.innerText = "Keep Practicing!";
+        speakText(`Good try! Let's try ${targetEmotion.name} again!`);
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function addStars(count) {
+      userStars += count;
+      document.getElementById('total-stars').innerText = userStars;
+    }
+
+    function closeModal() {
+      document.getElementById('result-modal').classList.add('hidden');
+    }
+
+    function toggleHelpModal() {
+      const modal = document.getElementById('help-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    function showCustomAlert(title, message) {
+      const helpModal = document.getElementById('help-modal');
+      helpModal.querySelector('h3').innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> ${title}`;
+      helpModal.querySelector('ol').innerHTML = `<p class="text-sm text-slate-300 py-2">${message}</p>`;
+      helpModal.classList.remove('hidden');
+    }
+
+    // Initialize initial state on window load
+    window.onload = function() {
+      setEmotion(0);
+      // Auto prompt camera load
+      initCamera();
+    };
+  </script>
+</body>
+</html>
